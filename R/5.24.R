@@ -89,4 +89,46 @@ Between5 <- Bd %>%
   filter(between(dep_delay, 1, 30) & between(arr_delay, 31, Inf))
 
 # Solución 4
+#'
+#' Función para elejir la solución de los puntos
+#' @return retorna la solucion de los problemas del punto 5.2.1
+#' @examples Retrasos <- Solucion(1)
+#'
+
+Solucion <- function(v){
+
+  if(v==1){
+    R2 <- RetrasoMas2Horas()
+    print("Vuelos retrasado mas de 2 horas")
+    return(R2)
+
+  }else if(v==2){
+    Vh <- VuelosHouston()
+    print("Vuelos a houston")
+    return(Vh)
+  }
+  else if(v==3){
+    Op <- VoperadosUUAUDL()
+    print("operados por united, america, delta")
+    return(Op)
+  }
+  else if(v==4){
+    Sv <- SalidaVerano()
+    print("Vuelos que salieron en verano")
+    return(Op)
+  }
+  else if(v==5){
+    R1h <- RetrasoAlM1hora()
+    print("Retraso de al menos 1 hora")
+    return(R1h)
+  }
+  else if(v==6){
+    Ve12To6 <- Vuelos12To6()
+    print("Vuelos de media noche a 6 de la mañana")
+    return(Ve12To6)
+  }else{
+    print("Valor no encontrado")
+  }
+}
+
 

@@ -11,12 +11,7 @@ Bd <- nycflights13::flights
 RetrasoMas2Horas <- function(){
   RetrasoM2Horas <- Bd %>%
     filter(arr_delay>=120, dep_delay>=120)
-  ggplot(data = RetrasoM2Horas, aes(x = carrier)) +
-    geom_bar() +
-    ggtitle("Aerolíneas con más vuelos retrasados") +
-    xlab("Aerolínea") +
-    ylab("Cantidad de vuelos retrasados")
-}
+  }
 #´Hago el llamado de la función
 R2 <- RetrasoMas2Horas()
 #'Se realiza una nueva función para conocer los vuelos que salierón a Houston
@@ -92,10 +87,10 @@ Between5 <- Bd %>%
 #'
 #' Función para elejir la solución de los puntos
 #' @return retorna la solucion de los problemas del punto 5.2.1
-#' @examples Retrasos <- Solucion(1)
+#' @examples Retrasos <- retrieve_answer(1)
 #'
 
-Solucion <- function(v){
+  retrieve_answer <- function(v){
 
   if(v==1){
     R2 <- RetrasoMas2Horas()
@@ -130,5 +125,5 @@ Solucion <- function(v){
     print("Valor no encontrado")
   }
 }
-
+  Retrasos <- retrieve_answer(1)
 

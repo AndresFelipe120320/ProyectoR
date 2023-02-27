@@ -87,3 +87,6 @@ Between4 <- Bd %>%
 
 Between5 <- Bd %>%
   filter(between(dep_delay, 1, 30) & between(arr_delay, 31, Inf))
+
+# Solución 4
+

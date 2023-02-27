@@ -1,0 +1,129 @@
+---
+title: "Untitled"
+author: "Andres"
+date: "2023-02-27"
+output: html_document
+---
+
+```{r}
+
+library(nycflights13)
+library(tidyverse)
+library(ggplot2)
+Bd <- nycflights13::flights
+
+```
+
+## R Markdown
+
+
+
+```{r}
+R2 <- RetrasoMas2Horas()
+ggplot(data = R2, aes(x = carrier)) +
+geom_bar() +
+ggtitle("Aerolíneas con más vuelos retrasados") +
+xlab("Aerolínea") +
+ylab("Cantidad de vuelos retrasados")
+```
+```{r}
+Vh <- VuelosHouston()
+ggplot(data = Vh, aes(x = carrier)) +
+geom_bar() +
+ggtitle("Vuelos a Houston") +
+xlab("Aerolínea") +
+ylab("Cantidad de vuelos")
+```
+```{r}
+Op <- VoperadosUUAUDL()
+ggplot(data = Op, aes(x = carrier)) +
+geom_bar() +
+ggtitle("Vuelos operados por United, American y Delta") +
+xlab("Aerolínea") +
+ylab("Cantidad de vuelos")
+```
+```{r}
+Sv <- SalidaVerano()
+ggplot(data = Sv, aes(x = carrier)) +
+geom_bar() +
+ggtitle("Vuelos que salieron en verano") +
+xlab("Aerolínea") +
+ylab("Cantidad de vuelos")
+```
+```{r}
+R1h <- RetrasoAlM1hora()
+ggplot(data = R1h, aes(x = carrier)) +
+geom_bar() +
+ggtitle("Vuelos que se retrasaron al menos una hora") +
+xlab("Aerolínea") +
+ylab("Cantidad de vuelos")
+```
+```{r}
+Ve12To6 <- Vuelos12To6()
+ggplot(data = Ve12To6, aes(x = carrier)) +
+geom_bar() +
+ggtitle("Vuelos que salierón entre la medianoche y las 6 a. m.") +
+xlab("Aerolínea") +
+ylab("Cantidad de vuelos")
+```
+
+# Example 1 We will select flights that departed between 6 and 8 am:
+
+```{r}
+Between1 <- Bd %>%
+filter(between(hour, 6, 8))
+
+```
+The new Dataset is as follows
+
+```{r}
+Between1 
+```
+
+# Example 2 We will select flights departing in May or June:
+
+```{r}
+Between2 <- Bd%>%
+  filter(between(month, 5, 6))
+```
+The new Dataset is as follows
+
+```{r}
+Between2 
+```
+
+# Example 3 We will select flights that arrived on time (i.e. no delays):
+
+```{r}
+Between3 <- Bd %>%
+  filter(between(arr_delay, -1, 0))
+```
+The new Dataset is as follows
+
+```{r}
+Between3
+```
+
+#Example 4 We will select flights that arrived on time (i.e. no delays):
+
+```{r}
+Between4 <- Bd %>%
+  filter(between(dep_delay, 1, 30) & between(arr_delay, 31, Inf))
+```
+The new Dataset is as follows
+
+```{r}
+Between4 
+```
+
+# Example 5 We will select flights that arrived on time (i.e. no delays):
+
+```{r}
+Between5 <- Bd %>%
+  filter(between(dep_delay, 1, 30) & between(arr_delay, 31, Inf))
+```
+The new Dataset is as follows
+
+```{r}
+Between5
+```

@@ -1,0 +1,446 @@
+---
+title: "KNN, LINEAR REGRESSION AND MULTILINEAR REGRESSION GUIDE"
+author: "Andres Felipe Urrego - Juan Esteban Rincon - Brayan Alexander Suesca - Solivan Santiago Ruiz - Edison Santiago Triana"
+date: "2023-04-21"
+output: html_document
+---
+
+## INTRODUCTION
+
+This report presents the design and development of a data acquisition system that meets the following requirements: detects distances within a range of at least 50 cm, allows recording sensor data in a .csv file that can be used in R, and allows recording data from 2 sensors, either simultaneously or one at a time. The objective of this system is to obtain experimental data for further analysis and study.
+
+To achieve this goal, specific hardware and software for distance data acquisition has been used, and a series of tests have been performed to ensure the accuracy and reliability of the system. In total, at least 200 observations (instances) have been collected, each consisting of a sensor value and a manually measured distance.
+
+This report will describe in detail the design and operation of the data acquisition system, as well as the results obtained in the tests performed and will present the data processing and analysis techniques used to determine the wall shape and discuss the possible applications and limitations of the system. Finally, conclusions and possible future improvements that could be implemented to increase the accuracy and efficiency of the system will be presented.
+
+## DATA ACQUISITION SYSTEM
+
+The design for the model in charge of data acquisition was based on a four-wheeled mobile vehicle, where two of them were rotating and two fixed, this to provide greater stability and versatility when performing the movements for the detection of the requested parameters, it was also necessary to implement an H-bridge to control the speed of the motors that were attached to the fixed wheels, on the other hand, the Arduino board was used to perform the reading of the sensors and control the H-bridge module for the movement.
+
+![Implementation of wheels](ruedas_2.jpg){width=40%}
+
+![Bridge module assembly H y plate Arduino](puenteh.jpg){width=40%}
+
+To capture the observations, two sensors were used which were anchored to the upper part of the mobile robot structure, one of them is the HC-SR04 sensor, which is an ultrasound sensor used to measure distances between ranges of 2 cm to 400 cm, its implementation is very simple, since it uses only four pins: Vcc, GND, Trigger and Echo.
+
+-Vcc: This pin is used to supply 5V DC power to the sensor.
+
+-GND: This pin is used to connect the ground or negative pole of the power supply.
+
+-Trigger: This pin is used to send an activation signal to the sensor, which causes it to emit an ultrasonic pulse.
+
+-Echo: This pin is used to receive the ultrasonic signal reflected by the object and convert it into an electrical signal that can be measured.
+
+![Sensor 1 - HC-SR04 ](sensor1.jpg){width=40%}
+
+The following are the electrical parameters of the HC-SR04 sensor where the operating voltage, working current, frequency, dimensions, etc. are specified.
+
+![Sensor 1 - HC-SR04 ](datasheetsensor1.jpg){width=50%}
+
+
+
+The second sensor implemented was the SHARP 0A41SK F 21 which is an infrared distance sensor designed to detect nearby objects. The following are some of its main features
+
+Characteristics:
+
+-Detection range: 4 cm to 30 cm.
+
+-Consumo de energía: 35 mA a 5 V.
+
+-Power consumption: 35 mA at 5 V.
+
+-Fast and stable response.
+
+-High immunity to ambient light.
+
+-Detection angle: 25 degrees.
+
+![Sensor 2 - SHARP 0A41SK F 21](sensor2.jpg){width=40%}
+
+The following illustrations show the finished assembly of the data acquisition model, where the connections and electronic components mentioned above can be seen.
+
+![Mobile design completed](modelofinal.jpg){width=40%}
+
+![Sensor mounting](modelofinal2.jpg){width=40%}
+
+## ACQUIRED DATA
+
+Once the model was fully operational, we proceeded to make the dataset composed of 50 observations where a regular delta of 5 cm was used, at each point the reading of the two sensors and a manual measurement, which was performed with a flexometer.  
+
+The code implemented to perform these measurements was carried out in Arduino, where initially for sensor 1 HC-SR04 measures the time it takes for the ultrasound signal pulse to go to and return from the obstacle detected by the sensor. The pulseIn() function measures the time it takes for a pulse to change state, in this case from LOW to HIGH, and then back to LOW. The variable "duration" stores this time in microseconds.
+
+Duración = pulseIn(echo, HIGH);    
+
+The pulse duration measured on the previous line is then used to calculate the distance of the detected object in centimeters. The speed of sound in air is approximately 343 meters per second or 0.0343 cm/microsecond. Since the pulse travels from the sensor to the object and back, the distance can be calculated by dividing the pulse duration by 2 and multiplying by the speed of sound.
+
+distancia1 = duración * 0.034 / 2;    
+
+For sensor 2 SHARP 0A41SK F 21 an analog value is read from the SHARP sensor pin to calculate the distance of the detected obstacle in centimeters. The value read from the analog pin is used to calculate the sensor output voltage. The formula used to convert this voltage to distance is based on a ratio provided by the sensor manufacturer. In this case, a formula using a constant of 27.86 and an offset value of 0.16 is used to calculate the distance in centimeters.
+
+int val = analogRead(sharpPin);  
+distancia2 = 27.86 / (val - 0.16) * 100;
+
+The dataset obtained is shown below, in which two measurements can be observed for each sensor, one in centimeters and the other the analog value read depending on the distance from the obstacle. 
+
+```{r}
+library(knitr)
+library(readr)
+library(kableExtra)
+library(caret)
+library(psych)
+library(gmodels)
+library(class)
+
+
+
+DataSetSensores<- read.csv("C:/Users/santi/OneDrive/Escritorio/R final2/CARSYSTEM_Dataset.csv")
+tabla <- kable(DataSetSensores,"html",row.names = FALSE) 
+tabla <- kable_classic(tabla, "striped", full_width=FALSE)
+tabla
+```
+
+
+## 1.2 EXPLORATORY DATA ANALYSIS
+
+For this point it was not necessary to perform data reprocessing, since the data obtained by the mobile platform were numerical, on the contrary, an exploratory data analysis was performed, which serves to help identify patterns and trends in the data that can be useful for decision making and strategic planning.
+
+```{r}
+colnames(DataSetSensores)
+summary(DataSetSensores)
+```
+
+The colnames function is used to obtain or set the names of the columns of a data object, in this case it was used to obtain the name of the columns of the dataset which were("TIME" "Sensor1" "Sensor1.cm." "Sensor2" "Sensor2..cm." "Manual" "Muestra
+
+The summary function is used to obtain a statistical summary of an object, such as a data frame, a matrix or a vector. The type of summary displayed varies according to the type of object being summarized, it includes the minimum, maximum, mean, median, first and third quartile, as can be seen in sensor 1 the minimum value obtained is 337, the first quartile is below 925.8, the median is 1866.0, the mean is 1886.4, the third quartile is above 2737.2 and the maximum value is 3685.
+
+The histograms corresponding to the data from each of the sensors will be shown below. For this purpose, the "hist()" function was implemented, which is used to create histograms, which are graphs that show the distribution of a set of numerical data, which will be useful for detecting patterns or outliers in the data.
+
+```{r}
+hist(DataSetSensores$`Sensor1`)
+hist(DataSetSensores$`Sensor2`)
+```
+
+Considering the histograms obtained, it can be identified that for sensor 1 the values are distributed among all possible values and that the data with the highest frequency is in the interval from 500 to 1000; on the other hand, in the histogram of sensor 2 there is evidence of atypical distributions where the data with the highest frequency is in the interval from 100 to 150.
+Based on the above, it can be assumed that the predictive model of sensor 1 will behave more accurately than the predictive model of sensor 2.
+
+
+Below are graphs made by the pairs() function, which is used to create scatterplot arrays, in order to visualize the relationship between multiple variables in a data set.
+
+```{r}
+pairs(
+  DataSetSensores[c("Sensor1","Sensor2","Manual")]
+  ,pch=21, bg=c("black","blue","red")[unclass(DataSetSensores$Manual)]
+  ,main="Sensor1 = Negro- Sensor 2 = Azul- Manual=Rojo")
+```
+
+
+In the previous graph we can apparently observe a high correlation between the manual and sensor 1 variables, however, the pairs.panels() function will be used to obtain better data.
+
+The following function "pairs.panels()" is used to create a matrix of scatter plots with additional panels showing histograms of the variables in the margins and correlation coefficients in the diagonals.
+
+```{r}
+pairs.panels(
+  DataSetSensores[c("Sensor1","Sensor2","Manual")]
+  ,pch=21, bg=c("black","blue","red")[unclass(DataSetSensores$Manual)]
+  ,main="Sensor1 = Negro- Sensor 2 = Azul- Manual=Rojo"
+)
+```
+
+
+Based on the figure obtained, it can be seen that there is a strong correlation between sensor 1 and the manual variable, since the result is 1 which indicates that the objective variable will be "manual", and, on the other hand, it can be seen that sensor 2 presents a high covariance with respect to the other variables, since its result is -0.75.
+
+## 1.2 LINEAR MODEL TRAINING
+
+Linear model training is used to find the linear relationship between a dependent variable and one or more independent variables in a data set. The linear model can be used to predict the values of the dependent variable from the values of the independent variables.
+
+The linear model is based on the assumption that there is a linear relationship between the dependent variable and the independent variables. The model estimates the coefficients of the linear relationship and uses them to predict the values of the dependent variable.
+
+The first thing that was done was to create a variable called "predictors" to which the predictor variables (sensor 1, sensor 2) were assigned, then a sampling of 70% of the dataset was performed, which was assigned to a variable called "sample.index".
+
+
+```{r}
+predictors <- colnames(DataSetSensores)[-3]
+sample.index <- sample(1:nrow(DataSetSensores)
+                       ,nrow(DataSetSensores)*0.7
+                       ,replace = F)
+predictors
+sample.index
+```
+
+
+Subsequently, the dataset was split into two parts, one for training and the other for testing in order to perform a good practice, which is common in machine learning. This is because it is important to evaluate the ability of the model to generalize and predict well the data that were not used to train it. Therefore, it is necessary to separate the data into a training set and a test set.
+
+The training set is used to fit the model parameters, while the test set is used to evaluate the accuracy of the model on new data. By using a separate test set, overfitting of the model to the training set is avoided and the generalizability of the model can be better evaluated.
+
+
+```{r}
+train.data <- DataSetSensores[sample.index,c(predictors,"Manual"),drop=F]
+test.data <- DataSetSensores[sample.index,c(predictors,"Manual"),drop=F]
+train.data
+test.data
+```
+
+
+Next, the lm function was used to fit a linear model to our data set, for this purpose a variable called "Sensor1_model" was created and by means of the summary function the statistical analysis of this model can be observed.
+
+```{r}
+Sensor1_model <- lm(Manual ~ Sensor1, data=train.data)
+summary(Sensor1_model)
+lm(formula = Manual ~ Sensor1+Sensor2, data=train.data)
+```
+
+ A continuación, se describe el significado de cada una de las medidas de ajuste:
+
+The meaning of each of the measures of fit is described below:
+
+The coefficient of determination R-squared (R-squared) measures the proportion of the total variance of the dependent variable that is explained by the model. That is, R-squared is a measure of how well the data fit the model. In this case, the R-squared value is 0.9974, which means that the model explains 99.74% of the variability of the dependent variable.
+
+The Adjusted R-squared (Adjusted R-squared) is similar to the R-squared, but is adjusted for the number of independent variables in the model. This measure of fit is more appropriate for comparing models with different numbers of independent variables. In this case, the value of the adjusted R-squared is 0.9973, which indicates that the adjusted model explains 99.73% of the variability of the dependent variable, after taking into account the number of independent variables in the model.
+
+Next, the lm function was used in order to fit a linear model to our data set, for this a variable called "Sensor2_model" was created and by means of the summary function the statistical analysis of this model can be observed.
+
+```{r}
+Sensor2_model <- lm(Manual ~ Sensor2, data=train.data)
+summary(Sensor2_model)
+```
+
+
+The meaning of each of the measures of fit is described below:
+
+The coefficient of determination R-squared (R-squared) measures the proportion of the total variance of the dependent variable that is explained by the model. That is, R-squared is a measure of how well the data fit the model. In this case, the R-squared value is 0.5006, which means that the model explains 50.06% of the variability of the dependent variable.
+
+The Adjusted R-squared (Adjusted R-squared) is similar to the R-squared, but is adjusted for the number of independent variables in the model. This measure of fit is more appropriate for comparing models with different numbers of independent variables. In this case, the value of the Adjusted R-squared is 0.4855, which indicates that the adjusted model explains 48.55% of the variability of the dependent variable, after taking into account the number of independent variables in the model.
+
+## MODEL VALIDATION
+
+LINEAR MODEL VALIDATION is a technique used to evaluate model performance on unseen or new data, different from the data used to fit the model. This validation is performed to verify whether the fitted linear model is able to generalize well to new data and accurately predict the values of the dependent variable.
+
+
+```{r}
+ValidacionModelo1 <- predict(Sensor1_model,DataSetSensores)
+ValidacionModelo1
+
+ValidacionModelo2 <- predict(Sensor2_model,DataSetSensores)
+ValidacionModelo2
+```
+
+
+
+
+Based on the above results, it can be determined that the linear model of sensor 1 has a greater capacity to predict compared to the model of sensor 2, one of the causes of this difference is that the second sensor was an optical sensor whose measurement range was between 4 and 30 cm, on the contrary, sensor number 1 had a wider measurement range.
+
+
+RMSE stands for "Root Mean Squared Error" and is a measure of the accuracy of a statistical model in R. It is used to measure the difference between the observed values and the values predicted by the model. The RMSE is calculated as the root mean square of the mean squares of the errors.
+
+```{r}
+RMSEmodelo1 = data.frame(prediccion = ValidacionModelo1
+                         ,actual = DataSetSensores$Manual
+                         ,RSE = sqrt((ValidacionModelo1-DataSetSensores$Manual)^2))
+RMSEmodelo1
+sum(RMSEmodelo1$RSE)/nrow(RMSEmodelo1)
+```
+
+
+```{r}
+RMSEmodelo2 = data.frame(prediccion1 = ValidacionModelo2
+                         ,actual1 = DataSetSensores$Manual
+                         ,RSE1 = sqrt((ValidacionModelo2-DataSetSensores$Manual)^2))
+RMSEmodelo2
+sum(RMSEmodelo2$RSE)/nrow(RMSEmodelo2)
+```
+
+
+## 1.2 MULTILINEAR REGRESSION TRAINING
+
+Training a multilinear regression in R follows the same principles as training a simple linear regression model. The only difference is that multilinear regression involves more than one independent variable.
+
+```{r}
+modelo_multilineal <- lm(Manual ~ Sensor1 + Sensor2, data=train.data)
+modelo_multilineal
+summary(modelo_multilineal)
+```
+
+
+
+The performance of the multilinear regression model is verified as follows 
+
+```{r}
+ValidacionModelo3 <- predict(modelo_multilineal,DataSetSensores)
+ValidacionModelo3
+```
+RMSE stands for "Root Mean Squared Error" and is a measure of the accuracy of a statistical model in R. It is used to measure the difference between the observed values and the values predicted by the model. The RMSE is calculated as the root mean square of the mean squares of the errors.
+
+```{r}
+RMSEmodelo3 = data.frame(prediccion2 = ValidacionModelo3
+                         ,actual2 = DataSetSensores$Manual
+                         ,RSE2 = sqrt((ValidacionModelo3-DataSetSensores$Manual)^2)
+)
+RMSEmodelo3
+sum(RMSEmodelo2$RSE)/nrow(RMSEmodelo3)
+```
+
+In the analysis presented, a table with the results of a linear regression model is shown where the predictions made by the model (prediction2) are compared with the actual observed values (actual2). In addition, the relative squared error (RSE2) is presented for each of the observations.
+
+The RSE2 is a measure of the accuracy of the model. It shows the ratio of the mean squared error to the total variance of the data. In this case, the RSE2 varies between 0.026 and 1.352. In general, a low RSE2 value is sought to indicate that the model is accurate.
+
+Looking at the values in the table, we can notice that for most of the predictions, the RSE2 is quite low, indicating a good accuracy of the model. However, there are some exceptions, such as the eighth and ninth observations, where the RSE2 is quite high. This suggests that the model may not be performing adequately for those observations and further investigation is needed to determine the possible causes of the error.
+
+In summary, the results presented suggest that the linear regression model used may be accurate for some observations, but not for others. Further analysis is important to determine if the results can be improved.
+
+# 1.2 CROSS VALIDATION FOR LINEAR MODELS
+
+The following code performs a linear regression model fit with 10-part cross-validation to evaluate model performance. The cross-validation process helps to estimate model performance on unseen data and, therefore, to select a model that is more generalizable.
+
+```{r}
+set.seed(15)
+train.control1 <- trainControl(method = "cv", number = 10)
+modelo1 <- train(Manual ~ Sensor1 + Sensor2 , data = train.data, method = "lm"
+               ,trControl = train.control1)
+
+print(modelo1)
+
+set.seed(15)
+train.control2 <- trainControl(method = "cv", number = 10)
+modelo2 <- train(Manual ~ Sensor1  , data = train.data, method = "lm"
+               ,trControl = train.control2)
+
+print(modelo2)
+
+set.seed(15)
+train.control3 <- trainControl(method = "cv", number = 10)
+modelo3 <- train(Manual ~  Sensor2 , data = train.data, method = "lm"
+               ,trControl = train.control3)
+print(modelo3)
+```
+
+# 1.3 MODEL VALIDATION
+
+The cross validation consists of evaluating the data in the training and test sets initially proposed to determine its performance in each of the sets. 
+
+With this in mind, the data acquisition process was carried out again# 1.3 MODEL VALIDATION
+
+The cross validation consists of evaluating the data in the training and test sets initially proposed to determine its performance in each of the sets. 
+
+With this in mind, the data acquisition process was performed again.
+
+![Validacion del modelo](nuevosdatos.jpg){width=40%}
+
+![Validacion del modelo](nuevosdatos2.jpg){width=40%}
+```{r}
+set.seed(15)
+train.control4 <- trainControl(method = "cv", number = 50)
+validacion <- train(Manual ~ Sensor1 + Sensor2 , data = train.data, method = "lm"
+               ,trControl = train.control4)
+
+print(validacion)
+```
+
+##2. PREDICTION OF A CATEGORICAL VARIABLE 
+For the development of this section the mobile robot implemented in point 1 was used, additionally 3 types of obstacles were used to capture new data, which were concave, convex and flat.
+
+![Validacion del modelo](concavo.jpg){width=40%}
+
+![Validacion del modelo](convexo.jpg){width=40%}
+
+![Validacion del modelo](plano.jpg){width=40%}
+
+
+
+
+A continuación se presenta  el nuevo dataset conformado por 150 observaciones, realizado con el sistema de adquisición de datos empleado en el punto 1, es importante tener en cuenta que las variables a analizar en este dataset son Sensor1, Sensor2 y Pertenece, esta última variable clasifica el tipo de obstáculo con el cual fue obtenida la medida:
+
+C = Cóncavo
+
+CX = Convexo
+
+P = Plano
+
+```{r}
+dataframe<- read.csv("C:/Users/santi/OneDrive/Escritorio/R final2/CARSYSTEM - Dataset2.csv")
+tabla <- kable(dataframe,"html",row.names = FALSE) 
+tabla <- kable_classic(tabla, "striped", full_width=FALSE)
+tabla
+```
+
+
+##2.2 EXPLORATORY DATA ANALYSIS
+
+A través del análisis exploratorio de datos, podemos visualizar y resumir la estructura de los datos, identificar patrones, detectar valores atípicos y entender la distribución de las variables
+
+```{r}
+#--Normalization function---#
+normalise <- function(x){
+  return((x-min(x))/(max(x)-min(x)))
+}
+#----Change to factor my class----#
+dataframe$ Pertenece<-
+  as.factor(dataframe$Pertenece)
+#---I look at the proportions of my datframe-#
+prop.table(table(dataframe$Pertenece))
+```
+
+Este código en R define una función llamada normalice que normaliza un vector de datos en un rango de 0 a 1. A continuación, se cambia la columna Pertenece del dataframe DataSetSensores2 a un factor. Finalmente, se utiliza la función prop.table() junto con table() para calcular las proporciones de las diferentes categorías en la columna Pertenece. 
+El resultado final es un vector con las proporciones de cada valor de Pertenece.
+
+```{r}
+
+hist(dataframe$`Sensor.1`)
+hist(dataframe$`Sensor.2`)
+```
+
+Considering the histograms generated, we can deduce that sensor 1 has a better distribution of data, where no outliers are evident, the range with the highest frequency is 1000 to 1500. On the other hand, the graph for sensor 2 behaves in a way where the data are scattered and more outliers and aberrant data are evidenced, the range with more frequency is from 50 to 100.
+
+Next, the KNN model will be performed with the dataset composed of 150 observations.
+
+```{r}
+#----------------------minmax------------#
+### min-max
+normData <- dataframe
+standardData <- dataframe
+normData$Sensor.1 <-normalise(dataframe$`Sensor.1`)
+normData$Sensor.2 <-normalise(dataframe$`Sensor.2`)
+
+#------------ z- score------------------#
+standardData$Sensor.1 <-scale(dataframe$`Sensor.1`)
+standardData$Sensor.2 <-scale(dataframe$`Sensor.2`)
+
+
+#-------------I split my dataframe--------#
+sample.index <- sample(1:nrow(dataframe)
+                       ,nrow(dataframe)*0.7
+                       ,replace = F)
+```
+The above lines of code create two new dataframes called normData and standardData, initialized with the same content as the original dataframe called dataframe.
+It standardizes the values of the Sensor.1 and Sensor.2 columns using the min-max technique and stores them in the normData dataframe.
+Standardizes the values of the Sensor.1 and Sensor.2 columns using the z-score technique and stores them in the standardData dataframe.
+It splits the original dataframe dataframe into two subsets of data. The first subset, with 70% of the rows, will be used to train a predictive model and the second subset, with the remaining 30%, will be used to evaluate the trained model. The row indices of the training and evaluation data are stored in the sample.index variable.
+
+
+```{r}
+#----------training and testing---------#
+k <- 1
+predictors <- c("Sensor.1","Sensor.2")
+
+# original data
+train.data <-dataframe[sample.index,c(predictors,"Pertenece"),drop=F]
+test.data <-dataframe[-sample.index,c(predictors,"Pertenece"),drop=F]
+
+#-- I charge my library class---#
+prediction <- knn(train = train.data[predictors], test = test.data[predictors],cl = train.data$Pertenece, k=k)
+#---Gmoldes---#
+
+CrossTable(x = test.data$Pertenece, y = prediction
+           
+           ,prop.chisq=F)
+```         
+
+As can be seen, the above lines of code are responsible for:
+
+Set the value of k to 1 and define the predictors as Sensor.1 and Sensor.2.
+
+Divide the dataframe dataset into two sets: train.data and test.data. The train.data set is randomly selected using a ratio of 0.7 and contains the predictors and the response variable Belongs. The test.data set contains the predictors and the response variable Belongs that are not in train.data.
+
+The KNN analysis is performed using the train.data training data set and the specified predictors. The response variable Belongs is used as the class for the analysis. The function returns the class predictions for the test.data test.data dataset.
+
+A contingency table is created that compares the true classes of the test data set with the classes predicted by the KNN model.
+
